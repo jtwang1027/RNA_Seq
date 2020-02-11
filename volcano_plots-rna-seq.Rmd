@@ -1,0 +1,59 @@
+---
+title: "rna-seq-volcano_plots"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+require(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Loading libraries
+```{r libraries, echo=F, message=FALSE, warning=FALSE}
+require(readxl)
+require(EnhancedVolcano)
+require(dplyr)
+```
+
+Read in expression data
+```{r}
+#pompe vs healthy
+df <- read_excel("path/filename.xlsx", sheet = 2)
+df <- arrange(df, desc(abs(stat)))#noduplicates
+df <- df[!duplicated(df$GeneID),]
+#add boundaries for logfc and pval
+df$fdr<- p.adjust(df$pvalue, method="fdr")
+
+df <- dplyr::rename(df, logFC= colnames(df)[4])
+
+#set boundaries on logfc and pvalue
+pthresh= 10^-8
+fcthresh= 6
+
+df$logFC[df$logFC>fcthresh]= fcthresh
+df$logFC[df$logFC< -fcthresh]= -fcthresh
+df$pvalue[df$pvalue< pthresh]= pthresh
+
+```
+
+```{r}
+head(df)
+```
+
+
+
+```{r volcano plots- WT v KO, echo=}
+p <- EnhancedVolcano(df, lab=rep("",nrow(df)), x= "logFC", y="fdr",pCutoff=.05,
+  FCcutoff=1, pointSize = 1.5, labSize = 3.0,
+    xlab = bquote(~Log[2]~ "Fold Change (IO/Healthy)"),
+  ylab = bquote(~-Log[10]~italic("FDR")),
+  ylim=c(0,5), legend = c("d","d","d","FDR<.05 |FC|>1"),
+  title="",subtitle="",col=c('black','black','black','royalblue')          ) #,colCustom = keyvals  #for mouse coloring
+
+p+ ggplot2::coord_cartesian(xlim=c(-6, 6)) +
+    ggplot2::scale_x_continuous(
+      breaks=seq(-6,6, 2))
+
+```
