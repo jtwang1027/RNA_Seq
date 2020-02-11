@@ -53,7 +53,10 @@ p <- EnhancedVolcano(df, lab=rep("",nrow(df)), x= "logFC", y="fdr",pCutoff=.05, 
 p+ ggplot2::coord_cartesian(xlim=c(-6, 6)) +
     ggplot2::scale_x_continuous(
       breaks=seq(-6,6, 2))
+
 ```
+
+![volcano-plot](https://user-images.githubusercontent.com/46359281/74269596-b7969480-4cd7-11ea-9185-31b58d334bdf.png)
 
 ![](volcano_plots-rna-seq_files/figure-html/unnamed-chunk-2-1.png)<!-- -->
 
