@@ -11,26 +11,25 @@ require(readxl)
 require(RColorBrewer)
 require(stringr)
 
-###################REVERSED GENES FROM therapeutic TREATMENT
+#REVERSED GENES FROM therapeutic TREATMENT
 #30 genes (fdr <.05), generated from: 'ms_venn_diagram.rmd'
-overlap=read.csv('C:/Users/jwang/Documents/DUKE/LAB/180710-wt-aav-ko-rna-seq-koeberl-RNA-SEQUENCINGmouse-aav_reversed-fdr05.txt',sep='\t', header= FALSE, stringsAsFactors = FALSE)
+overlap=read.csv('list/of/reversed/genes.csv')
 overlap=overlap[[1]]
-###################
 
 genes_shown <-15
 
-#first dataset
+#first dataset; getting raw data
 genes <- read_excel("C:/path/to/file.xlsx",   sheet='KO.vs.WT') %>% as.data.frame()
 genes=genes[ , !(names(genes) %in% "logFC (KO / WT)")] #critical for how columns are selected for heatmap later
 genes=genes[genes$GeneName %in% overlap,]
 
-#2nd dataset
+#2nd dataset; getting raw data
 genes2 <- read_excel("path/to/file2.xlsx",sheet='AAV.vs.KO') %>% as.data.frame() 
 genes2=genes2[genes2$GeneName %in% overlap,c('stat',"GeneName","AAV.G5.315","AAV.G5.316", "AAV.G5.317","AAV.G5.318")]
 
+#merging
 mer=merge(genes, genes2, by= 'GeneName')
 mer=mer[mer$IsCoding=='TRUE',]
-
 mer=mutate(mer, stat_comb=abs(stat.x)+abs(stat.y)) #combined stat score
 mer <- mer %>% arrange(desc(stat_comb))
 mer= filter(mer, IsCoding=='TRUE')
