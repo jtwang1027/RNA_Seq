@@ -1,0 +1,143 @@
+---
+title: "pompe-venn_diagrams_differential_express_pathways"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+```
+
+## R Markdown
+```{r libraries, echo=F, message=FALSE, warning=FALSE}
+require(readxl) #for reading in excel file
+require(xlsx) #only needed for writing final excel file
+require(venneuler)
+require(VennDiagram) #another option for venn diagram 
+require(dplyr)
+require(tidyverse)
+require(RColorBrewer)
+```
+
+```{r path info, echo=FALSE}
+path <- "path/to/file"
+file <- 'DifferentialExpression.xlsx'
+
+filename <- paste0(path,file)
+setwd(path)
+sheets <- excel_sheets(filename)
+
+AW <- read_excel(filename, sheet='AAV.vs.WT')
+KW <- read_excel(filename, sheet='KO.vs.WT')
+AK <- read_excel(filename, sheet='AAV.vs.KO')
+
+
+dlist <- list(AW,KW,AK) # list of dataframes, more convenient for applying operations to all sheets
+
+```
+
+
+
+```{r  filtering data based on thresholds, echo= F}
+pthresh <- 0.05 #cutoff for padj
+thresh <- 1 #cutoff for log2 FC
+
+#column 4= adj. log2 FC, column 8: adj. pval
+dlist.trim <- lapply(dlist, function(x)
+  filter(x,x[['padj']]<pthresh))
+dlist.trim <- lapply(dlist.trim, function(x)  filter(x,abs(x[4])>=thresh))
+
+AW.T <- dlist.trim[[1]]
+KW.T<- dlist.trim[[2]]
+AK.T<- dlist.trim[[3]]
+```
+
+genes matched based on geneid
+
+color options from rcolorbrewer:
+https://www.datanovia.com/en/blog/the-a-z-of-rcolorbrewer-palette/http://www.sthda.com/english/wiki/colors-in-r
+
+```{r find overlapping genes for venn diagram incoporating directional changes}
+
+#confirm not only geneid, but also direction of change
+sign_add= function(x,stc=6,gn=2)
+{  #receives row of a dataframe
+  #returns genename w/ sign
+  #stc =stat col (6), gn= gene name col (2)
+  return(ifelse( sign( as.numeric(x[stc]) )==1,
+                 paste0("+",x[gn]),
+                 paste0("-",x[gn])
+  ))
+  
+}
+
+#used for matching and finding intersection for Venn diagram
+KW_signed <- apply(KW.T,MARGIN = 1, sign_add, 6,'GeneName')
+#reverse AK signs bc they need  to be opposite signs for matching
+AK.T <- mutate(AK.T,revstat= -1*stat )
+AK_signed <- apply(AK.T,MARGIN = 1, sign_add, stc=17,gn="GeneName")
+```
+
+
+```{r venndiagram package}
+require(VennDiagram)
+require(wesanderson)
+
+
+require(RColorBrewer)
+#COLOR options
+# myCol <- terrain.colors(2)
+# myCol <- c(rgb(66,105,160, max=255), rgb(.36,.57,.28))
+# myCol <- wes_palette(name='Darjeeling2', n=2)
+myCol <- brewer.pal(3, 'Dark2')#min is 3, just select the first 2 after
+myCol <- myCol[1:2]
+
+
+venn.diagram(
+  x = list(KW_signed, AK_signed),
+  category.names = c("KO/WT",'Treated/KO'), #Titles
+  filename = '/destination/picture.png',
+  output=TRUE,
+  lwd=2,
+  col=myCol, #border color
+  fill=alpha(myCol,.6),
+  # Output features
+  imagetype="png" ,
+  height = 2.2 , 
+  width = 2.2 , 
+  units='in',
+  cat.just=list(c(0,-2) , c(1,-3)), #adjust position of titles
+  #main.fontfamily = 'sans',
+  resolution = 300)
+
+
+
+```
+sans=arial
+serif= times new roman
+
+https://rdrr.io/bioc/GeneOverlap/man/GeneOverlap.html
+https://stats.stackexchange.com/questions/16247/calculating-the-probability-of-gene-list-overlap-between-an-rna-seq-and-a-chip-c
+b<=a
+a: number of genes in A
+b:number of genes in B
+n: total # of genes
+t: intersec of A and B
+
+dhyper(t, a, n - a, b) 
+sum(dhyper(t:b, a, n - a, b)) # prob of seeing t or greater at the intersection
+```{r hypergeometric venn diagram statistical test}
+require(GeneOverlap)
+x= 1006#intersection
+m= 1238+1006#total genes in A
+n= 32e3#total genes in Mm or Hs GENOME
+k= 482+1006#total genes in B
+
+phyper(x-1,m,n,k,lower.tail = F)
+
+
+```
+
+
+
